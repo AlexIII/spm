@@ -4,7 +4,7 @@
 ### A simple multiplatform program that stores your passwords in an encrypted form.
 
 #### Features
-- Strong encryption
+- Strong encryption (AES 128bit)
 - Lightweight
 - Multiplatform
 
