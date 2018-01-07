@@ -24,7 +24,8 @@ On the first run the program creates database file `spmdb.xml` in the current di
 #### Hints
 - Double click puts the password into the clipboard
 - The clipboard is automatically cleared in 30 seconds after coping the password or when the programm is being closed
-- Filter acts on "site", "login" and "comment" fields
+- Filter acts on "Site", "Login" and "Comment" fields
+- "Site", "Login" and "Comment" fields are being encrypted too
 
 #### Requirements
 - [JRE 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html)
