@@ -16,6 +16,8 @@
 Just download SPM.exe from `/dist`, put it somewhere, create a shortcut and run.
 - Other platforms<br/>
 Download SPM.jar from `/dist` and run it with your JVM. You can also find a program icon in `src/resources/`
+- Paranoid<br/>
+Review the source code thoroughly and built it yourself
 
 On the first run the program creates database file `spmdb.xml` in the current directory.
 
