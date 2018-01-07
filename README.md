@@ -1,7 +1,7 @@
 # Simple Password Manager v1.3
 ![alt text](https://github.com/AlexIII/spm/blob/master/src/resources/ico.png) 
 
-### A simple multiplatform program that stores your passwords in an encrypted form.
+### A simple multiplatform program that locally stores your passwords in an encrypted form.
 
 #### Features
 - Strong encryption (AES 128bit)
