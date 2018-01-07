@@ -77,8 +77,11 @@ public class AppDialogs {
         return manageEntry(e, "Edit entry");
     }
     public static void about(String progTitle, String ver, javax.swing.Icon ic) {
-        JOptionPane.showMessageDialog(null, progTitle + " \nVersion: " + ver
-                + " \nPublic License: WTFPL v2",
+        JOptionPane.showMessageDialog(null, 
+                progTitle 
+                + " \nVersion: " + ver
+                + " \nPublic License: WTFPL v2"
+                + " \nhttps://github.com/AlexIII/spm",
                 "About", JOptionPane.INFORMATION_MESSAGE, ic);
     }
     

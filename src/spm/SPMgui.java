@@ -41,12 +41,14 @@ public class SPMgui extends javax.swing.JFrame {
         initComponents();
         setMinimumSize(getSize());
         setTitle(progTitle);
+        
         //set window icon
         try {
             URL url = SPMgui.class.getResource(iconPath);
             icon = new ImageIcon(url);
             setIconImage(icon.getImage());
-        } catch (Exception ex) {}       
+        } catch (Exception ex) {} 
+        
         //set listeners
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
