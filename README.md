@@ -7,7 +7,7 @@
 - Strong encryption (AES 128bit)
 - Lightweight
 - Multiplatform
-- uses UTF-8
+- Uses UTF-8
 
 #### Usage
 - Windows users<br/>
