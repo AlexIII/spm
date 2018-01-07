@@ -37,5 +37,5 @@ On the first run the program creates database file `spmdb.xml` in the current di
 License
 [WTFPL v2](http://www.wtfpl.net)
 
-GUI was created with [NetBeans IDE](https://netbeans.org/)
+GUI was created with [NetBeans IDE](https://netbeans.org/)<br/>
 Executable for Windows was created with [Launch4j](http://launch4j.sourceforge.net/)
