@@ -38,3 +38,4 @@ License
 [WTFPL v2](http://www.wtfpl.net)
 
 GUI was created with [NetBeans IDE](https://netbeans.org/)
+Executable for Windows was created with [Launch4j](http://launch4j.sourceforge.net/)
