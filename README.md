@@ -6,8 +6,10 @@
 #### Features
 - Strong encryption (AES 128bit)
 - Lightweight
-- Multiplatform
+- Multi-platform
 - Uses UTF-8
+- Open-source
+- Extremely permissive license
 
 #### Usage
 - Windows users<br/>
