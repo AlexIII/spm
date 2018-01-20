@@ -2,8 +2,8 @@
 <launch4jConfig>
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
-  <jar>C:\Users\Alex\Documents\NetBeansProjects\SPM\dist\SPM.jar</jar>
-  <outfile>C:\Users\Alex\Documents\NetBeansProjects\SPM\dist\SPM.exe</outfile>
+  <jar>..\dist\SPM.jar</jar>
+  <outfile>..\dist\SPM.exe</outfile>
   <errTitle></errTitle>
   <cmdLine></cmdLine>
   <chdir>.</chdir>
@@ -13,7 +13,7 @@
   <stayAlive>false</stayAlive>
   <restartOnCrash>false</restartOnCrash>
   <manifest></manifest>
-  <icon>C:\Users\Alex\Documents\NetBeansProjects\SPM\src\resources\ico.ico</icon>
+  <icon>.\resources\ico.ico</icon>
   <singleInstance>
     <mutexName>SPM_mustex_global</mutexName>
     <windowTitle></windowTitle>
