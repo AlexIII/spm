@@ -21,6 +21,8 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.security.InvalidKeyException;
 import org.w3c.dom.Node;
+import javax.xml.transform.stream.StreamSource;
+import java.io.StringReader;
 
 /**
  *
@@ -129,11 +131,28 @@ public class DataTable extends ArrayList<Entry> {
     }
     
     private static void save(Document doc, String fname) {
+        String xsltContent = 
+            "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">\n" +
+            "  <xsl:output indent=\"yes\"/>\n" +
+            "  <xsl:strip-space elements=\"*\"/>\n" +
+            "\n" +
+            "  <xsl:template match=\"/\">\n" +
+            "    <xsl:text>\n</xsl:text>\n" + // Add a newline before the root element
+            "    <xsl:apply-templates/>\n" +
+            "  </xsl:template>\n" +
+            "\n" +
+            "  <xsl:template match=\"@*|node()\">\n" +
+            "    <xsl:copy>\n" +
+            "      <xsl:apply-templates select=\"@*|node()\"/>\n" +
+            "    </xsl:copy>\n" +
+            "  </xsl:template>\n" +
+            "\n" +
+            "</xsl:stylesheet>\n";
         try {
-            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            doc.getDocumentElement().normalize();
+            Transformer transformer = TransformerFactory.newInstance().newTransformer(new StreamSource(new StringReader(xsltContent)));
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-            transformer.setOutputProperty(OutputKeys.DOCTYPE_PUBLIC, "yes");
             transformer.transform(new DOMSource(doc), new StreamResult(new File(fname)));
         } catch (TransformerException ex) {
             throw new RuntimeException("Cant write to file");
