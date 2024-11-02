@@ -1,261 +1,252 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package spm;
 
-import javax.swing.JOptionPane;
-import java.awt.Insets;
+import javax.swing.*;
+import java.awt.*;
 
-/**
- *
- * @author Alex
- */
-public class InputDialog extends java.awt.Dialog {
-//public interface
+public class InputDialog extends Dialog {
     public static final int FIELD_NORMAL = 0;
-    public static final int FIELD_PASSWORD = 1<<0;
-    public static final int FIELD_NOTEMPTY = 1<<1;
-    public static final int FIELD_GEN_PASSWORD = 1<<2;
-    
-    public interface CheckFields {
-        public String check(Object[] fields);
-    }
-    public interface CheckField {
-        public String check(Object field);
-    }    
+    public static final int FIELD_PASSWORD = 1 << 0;
+    public static final int FIELD_NOTEMPTY = 1 << 1;
+    public static final int FIELD_GEN_PASSWORD = 1 << 2;
 
-    public static Object show(java.awt.Frame parent, String title) {
-        return show(parent, title, (String)null);
+    public interface CheckFields {
+        String check(Object[] fields);
     }
-    public static Object show(java.awt.Frame parent, String title, String labelName) {
+
+    public interface CheckField {
+        String check(Object field);
+    }
+
+    public static Object show(Frame parent, String title) {
+        return show(parent, title, (String) null);
+    }
+
+    public static Object show(Frame parent, String title, String labelName) {
         return show(parent, title, labelName, null);
     }
-    public static Object show(java.awt.Frame parent, String title, String labelName, String defValue) {
+
+    public static Object show(Frame parent, String title, String labelName, String defValue) {
         return show(parent, title, labelName, defValue, 0);
     }
-    public static Object show(java.awt.Frame parent, String title, String labelName, String defValue, int fieldMode) {
+
+    public static Object show(Frame parent, String title, String labelName, String defValue, int fieldMode) {
         return show(parent, title, labelName, defValue, fieldMode, null);
     }
-    public static Object show(java.awt.Frame parent, String title, String labelName, String defValue, int fieldMode, CheckField checkSingle) {
-        Object[] tmp = show(parent, title, new String[] {labelName}, new String[] {defValue}, new int[] {fieldMode}, null, checkSingle);
-        return tmp != null && tmp.length > 0? tmp[0] : null;
+
+    public static Object show(Frame parent, String title, String labelName, String defValue, int fieldMode, CheckField checkSingle) {
+        Object[] tmp = show(parent, title, new String[]{labelName}, new String[]{defValue}, new int[]{fieldMode}, null, checkSingle);
+        return tmp != null && tmp.length > 0 ? tmp[0] : null;
     }
-    
-    public static Object[] show(java.awt.Frame parent, String title, String[] labelNames) {
+
+    public static Object[] show(Frame parent, String title, String[] labelNames) {
         return show(parent, title, labelNames, null);
-    }    
-    public static Object[] show(java.awt.Frame parent, String title, String[] labelNames, String[] defValues) {
+    }
+
+    public static Object[] show(Frame parent, String title, String[] labelNames, String[] defValues) {
         return show(parent, title, labelNames, defValues, null);
-    }    
-    public static Object[] show(java.awt.Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode) {
+    }
+
+    public static Object[] show(Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode) {
         return show(parent, title, labelNames, defValues, fieldMode, null);
-    } 
-    public static Object[] show(java.awt.Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode, CheckFields checkMulti) {
+    }
+
+    public static Object[] show(Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode, CheckFields checkMulti) {
         return show(parent, title, labelNames, defValues, fieldMode, checkMulti, null);
     }
 
-//private methods
-    private static Object[] show(java.awt.Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode, CheckFields checkMulti, CheckField checkSingle) {
+    private static Object[] show(Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode, CheckFields checkMulti, CheckField checkSingle) {
         InputDialog inp = new InputDialog(parent, title, labelNames, defValues, fieldMode, checkMulti, checkSingle);
         inp.setVisible(true);
         Object[] result = inp.result;
         inp.dispose();
         return result;
     }
-    
-    private InputDialog(java.awt.Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode, CheckFields checkMulti, CheckField checkSingle) {
+
+    private InputDialog(Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode, CheckFields checkMulti, CheckField checkSingle) {
         super(parent, true);
         this.fieldMode = fieldMode;
         this.checkMulti = checkMulti;
         this.checkSingle = checkSingle;
         initComponents(title, labelNames, defValues);
     }
-    
+
     private void initComponents(String title, String[] labelNames, String[] defValues) {
-        //create components
-        okButt = new javax.swing.JButton("OK");
-        genPassButt = new javax.swing.JButton("↻");
+        okButt = new JButton("OK");
+        genPassButt = new JButton("↻");
         Insets genPassButtMargin = genPassButt.getMargin();
         genPassButt.setMargin(new Insets(genPassButtMargin.top, 5, genPassButtMargin.bottom, 5));
         genPassButt.setToolTipText("Generate password and copy to clipboard");
-        cancelButt = new javax.swing.JButton("Cancel");
-        labels = new javax.swing.JLabel[labelNames.length];
-        fields = new javax.swing.JTextField[labelNames.length];
-        for(int i = 0; i < labelNames.length; ++i) {
-            labels[i] = new javax.swing.JLabel(labelNames[i]);
-            if(fieldMode != null && i < fieldMode.length) {
-                if((fieldMode[i]&FIELD_PASSWORD) != 0) fields[i] = new javax.swing.JPasswordField();
-                else fields[i] = new javax.swing.JTextField();
-            } else fields[i] = new javax.swing.JTextField();
+        cancelButt = new JButton("Cancel");
+        labels = new JLabel[labelNames.length];
+        fields = new JTextField[labelNames.length];
+
+        for (int i = 0; i < labelNames.length; ++i) {
+            labels[i] = new JLabel(labelNames[i]);
+            fields[i] = (fieldMode != null && i < fieldMode.length && (fieldMode[i] & FIELD_PASSWORD) != 0) ? new JPasswordField() : new JTextField();
             fields[i].setColumns(25);
         }
-        if(defValues != null)
-            for(int i = 0; i < defValues.length && i < fields.length; ++i)
+
+        if (defValues != null) {
+            for (int i = 0; i < defValues.length && i < fields.length; ++i) {
                 fields[i].setText(defValues[i]);
-        
-        //set properties
+            }
+        }
+
         setResizable(false);
         setTitle(title);
         setIconImage(null);
-        
-        //set listeners
+
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
-            public void windowClosing(java.awt.event.WindowEvent evt) {close();}
-        });        
-        cancelButt.addActionListener((evt) -> {close();});
-        okButt.addActionListener((evt) -> {ok();});
-        genPassButt.addActionListener((evt) -> {
-            for(int i = 0; i < fields.length; ++i) {
-                if((fieldMode[i]&FIELD_GEN_PASSWORD) != 0) {
-                    String passwd = new String(Crypto.generatePassword());
-                    Clipboard.copy(passwd, 30);
-                    fields[i].setText(passwd);
-                    break;
-                }
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                close();
             }
         });
-        fields[fields.length-1].addActionListener((evt) -> {ok();});
-        
-        //layout
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        setLayout(layout);
-        layout.setAutoCreateGaps(true);
-        layout.setAutoCreateContainerGaps(true);
-        if(labelNames.length > 1) layoutMulti(layout);
-        else layoutSingle(layout);
+
+        cancelButt.addActionListener(evt -> close());
+        okButt.addActionListener(evt -> ok());
+        genPassButt.addActionListener(evt -> generatePassword());
+        fields[fields.length - 1].addActionListener(evt -> ok());
+
+        setLayout(createLayout(labelNames.length > 1));
         pack();
         setLocationRelativeTo(null);
     }
-    
-    private void layoutMulti(javax.swing.GroupLayout layout) {
-        //Horizontal
-        javax.swing.GroupLayout.ParallelGroup horLabels = layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING);
-        javax.swing.GroupLayout.ParallelGroup horFields = layout.createParallelGroup();
-        javax.swing.GroupLayout.ParallelGroup horButt = layout.createParallelGroup();
-        for(int i = 0; i < fields.length; ++i) {
+
+    private void generatePassword() {
+        for (int i = 0; i < fields.length; ++i) {
+            if ((fieldMode[i] & FIELD_GEN_PASSWORD) != 0) {
+                String passwd = new String(Crypto.generatePassword());
+                Clipboard.copy(passwd, 30);
+                fields[i].setText(passwd);
+                break;
+            }
+        }
+    }
+
+    private GroupLayout createLayout(boolean isMulti) {
+        GroupLayout layout = new GroupLayout(this);
+        layout.setAutoCreateGaps(true);
+        layout.setAutoCreateContainerGaps(true);
+
+        if (isMulti) {
+            layoutMulti(layout);
+        } else {
+            layoutSingle(layout);
+        }
+
+        return layout;
+    }
+
+    private void layoutMulti(GroupLayout layout) {
+        GroupLayout.ParallelGroup horLabels = layout.createParallelGroup(GroupLayout.Alignment.TRAILING);
+        GroupLayout.ParallelGroup horFields = layout.createParallelGroup();
+        GroupLayout.ParallelGroup horButt = layout.createParallelGroup();
+
+        for (int i = 0; i < fields.length; ++i) {
             horLabels.addComponent(labels[i]);
             horFields.addComponent(fields[i]);
-            if((fieldMode[i]&FIELD_GEN_PASSWORD) != 0) {
+            if ((fieldMode[i] & FIELD_GEN_PASSWORD) != 0) {
                 horButt.addComponent(genPassButt);
             }
         }
-        javax.swing.GroupLayout.SequentialGroup horLF = 
-            layout.createSequentialGroup()
+
+        GroupLayout.SequentialGroup horLF = layout.createSequentialGroup()
                 .addGroup(horLabels)
                 .addGroup(horFields)
-        ;
-        horLF.addGroup(horButt);
+                .addGroup(horButt);
+
         layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
-                .addGroup(horLF)
-                .addGroup(
-                    layout.createSequentialGroup()
-                        .addComponent(okButt)
-                        .addComponent(cancelButt)
-                )
+                layout.createParallelGroup(GroupLayout.Alignment.CENTER)
+                        .addGroup(horLF)
+                        .addGroup(layout.createSequentialGroup()
+                                .addComponent(okButt)
+                                .addComponent(cancelButt))
         );
-        
-        //Vertical
-        javax.swing.GroupLayout.SequentialGroup verLF = layout.createSequentialGroup();
-        for(int i = 0; i < fields.length; ++i) {
-            javax.swing.GroupLayout.ParallelGroup g =
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+
+        GroupLayout.SequentialGroup verLF = layout.createSequentialGroup();
+        for (int i = 0; i < fields.length; ++i) {
+            GroupLayout.ParallelGroup g = layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                     .addComponent(labels[i])
                     .addComponent(fields[i]);
-            if((fieldMode[i]&FIELD_GEN_PASSWORD) != 0) {
+            if ((fieldMode[i] & FIELD_GEN_PASSWORD) != 0) {
                 g.addComponent(genPassButt);
             }
             verLF.addGroup(g);
         }
+
         layout.setVerticalGroup(
-            layout.createSequentialGroup()
-                .addGroup(verLF)                
-                .addGroup(
-                    layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(okButt)
-                        .addComponent(cancelButt) 
-                )
-        );        
-    }
-    
-    private void layoutSingle(javax.swing.GroupLayout layout) {
-        //Horizontal
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
-                .addComponent(labels[0])
-                .addComponent(fields[0])
-                .addGroup(
-                    layout.createSequentialGroup()
-                        .addComponent(okButt)
-                        .addComponent(cancelButt)
-                )
+                layout.createSequentialGroup()
+                        .addGroup(verLF)
+                        .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                .addComponent(okButt)
+                                .addComponent(cancelButt))
         );
-        
-        //Vertical
-        layout.setVerticalGroup(
-            layout.createSequentialGroup()
-                .addComponent(labels[0])
-                .addComponent(fields[0])                
-                .addGroup(
-                    layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(okButt)
-                        .addComponent(cancelButt) 
-                )
-        );                
     }
-    
+
+    private void layoutSingle(GroupLayout layout) {
+        layout.setHorizontalGroup(
+                layout.createParallelGroup(GroupLayout.Alignment.CENTER)
+                        .addComponent(labels[0])
+                        .addComponent(fields[0])
+                        .addGroup(layout.createSequentialGroup()
+                                .addComponent(okButt)
+                                .addComponent(cancelButt))
+        );
+
+        layout.setVerticalGroup(
+                layout.createSequentialGroup()
+                        .addComponent(labels[0])
+                        .addComponent(fields[0])
+                        .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                .addComponent(okButt)
+                                .addComponent(cancelButt))
+        );
+    }
+
     private void close() {
         setVisible(false);
     }
-    
+
     private void ok() {
         Object[] input = new Object[fields.length];
-        for(int i = 0; i < fields.length; ++i)
-            input[i] = fields[i] instanceof javax.swing.JPasswordField? 
-                    ((javax.swing.JPasswordField)fields[i]).getPassword() :
-                    fields[i].getText();
-        
-        if(!checkInput(input)) {
+        for (int i = 0; i < fields.length; ++i) {
+            input[i] = fields[i] instanceof JPasswordField ? ((JPasswordField) fields[i]).getPassword() : fields[i].getText();
+        }
+
+        if (!checkInput(input)) {
             result = null;
             return;
         }
         result = input;
         setVisible(false);
     }
-    
+
     private boolean checkInput(Object[] input) {
-        for(int i = 0; i < input.length; ++i)
-            if(fieldMode != null && i < fieldMode.length) {
-                if((fieldMode[i]&FIELD_NOTEMPTY) != 0)
-                    if((input[i] instanceof char[]? 
-                        ((char[])input[i]).length :
-                        ((String)input[i]).length()
-                        ) < 1) {
+        for (int i = 0; i < input.length; ++i) {
+            if (fieldMode != null && i < fieldMode.length && (fieldMode[i] & FIELD_NOTEMPTY) != 0) {
+                if ((input[i] instanceof char[] ? ((char[]) input[i]).length : ((String) input[i]).length()) < 1) {
                     JOptionPane.showMessageDialog(null, "\"" + labels[i].getText() + "\" field cannot be empty",
                             "Warning: Empty field", JOptionPane.WARNING_MESSAGE);
                     return false;
-                    }
+                }
             }
-                
-        String msg = input.length > 1? 
-                (checkMulti == null? null : checkMulti.check(input)) 
-                :(checkSingle == null? null : checkSingle.check(input));
-        if(msg != null) {
+        }
+
+        String msg = input.length > 1 ? (checkMulti == null ? null : checkMulti.check(input)) : (checkSingle == null ? null : checkSingle.check(input));
+        if (msg != null) {
             JOptionPane.showMessageDialog(null, msg, "Warning: Input error", JOptionPane.WARNING_MESSAGE);
             return false;
         }
-        
+
         return true;
     }
-    
-    private javax.swing.JButton okButt;
-    private javax.swing.JButton genPassButt;
-    private javax.swing.JButton cancelButt;
-    private javax.swing.JLabel[] labels;
-    private javax.swing.JTextField[] fields;
+
+    private JButton okButt;
+    private JButton genPassButt;
+    private JButton cancelButt;
+    private JLabel[] labels;
+    private JTextField[] fields;
     private Object[] result;
     private final int[] fieldMode;
     private final CheckFields checkMulti;
