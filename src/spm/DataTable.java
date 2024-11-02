@@ -28,21 +28,26 @@ public class DataTable extends ArrayList<Entry> {
     private static final String ENTRY_TAG = "entry";
     private static final String PASS_TEST_TAG = "passtest";
     
-    private Element root;
-    private String filterStr = "";
-    private List<Entry> filtered = null;
-    private Document doc = null;
-    private String fname = null;
-    private String passTest = null;
-    private NodeList entries;
+    private Element rootElement;
+    private String filterString = "";
+    private List<Entry> filteredEntries = null;
+    private Document document = null;
+    private String fileName = null;
+    private String encryptedPassTest = null;
+    private NodeList entryNodes;
 
-    public DataTable(final String fname) throws ParserConfigurationException, SAXException, IOException, InvalidKeyException {
-        this.fname = fname;
-        load();
+    public DataTable(final String fileName) throws ParserConfigurationException, SAXException, IOException, InvalidKeyException {
+        this.fileName = fileName;
+        loadDocument();
     }
 
-    // Public methods
-    public static boolean createDB(final String fname, byte[] key) {
+    /**
+     * Creates a new database file with the given name and encryption key.
+     * @param fileName The name of the file to create.
+     * @param key The encryption key.
+     * @return True if the database was created successfully, false otherwise.
+     */
+    public static boolean createDatabase(final String fileName, byte[] key) {
         try {
             Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
             Element root = doc.createElement(ROOT_TAG);
@@ -52,80 +57,125 @@ public class DataTable extends ArrayList<Entry> {
             passTest.setTextContent(Crypto.encryptPassword(key));
             root.appendChild(passTest);
 
-            new File(fname).createNewFile();
-            save(doc, fname);
+            new File(fileName).createNewFile();
+            saveDocument(doc, fileName);
         } catch (Exception ex) {
             return false;
         }
         return true;
     }
 
-    public boolean checkMasterPass(byte[] key) {
-        return Crypto.checkPassword(key, passTest);
+    /**
+     * Checks if the provided key matches the master password.
+     * @param key The encryption key to check.
+     * @return True if the key matches, false otherwise.
+     */
+    public boolean verifyMasterPassword(byte[] key) {
+        return Crypto.checkPassword(key, encryptedPassTest);
     }
 
-    public boolean changeMasterPass(byte[] oldKey, byte[] newKey) {
-        if (!checkMasterPass(oldKey)) return false;
+    /**
+     * Changes the master password from the old key to the new key.
+     * @param oldKey The current encryption key.
+     * @param newKey The new encryption key.
+     * @return True if the password was changed successfully, false otherwise.
+     */
+    public boolean updateMasterPassword(byte[] oldKey, byte[] newKey) {
+        if (!verifyMasterPassword(oldKey)) return false;
 
-        passTest = Crypto.encryptPassword(newKey);
-        ((Element) root.getElementsByTagName(PASS_TEST_TAG).item(0)).setTextContent(passTest);
+        encryptedPassTest = Crypto.encryptPassword(newKey);
+        ((Element) rootElement.getElementsByTagName(PASS_TEST_TAG).item(0)).setTextContent(encryptedPassTest);
 
-        NodeList eList = root.getElementsByTagName(ENTRY_TAG);
-        for (int i = 0; i < eList.getLength(); i++) {
-            Node old = eList.item(i);
-            old.getParentNode().replaceChild(new Entry(old).toElement(doc, ENTRY_TAG, newKey), old);
+        NodeList entryList = rootElement.getElementsByTagName(ENTRY_TAG);
+        for (int i = 0; i < entryList.getLength(); i++) {
+            Node oldNode = entryList.item(i);
+            oldNode.getParentNode().replaceChild(new Entry(oldNode).toXmlElement(document, ENTRY_TAG, newKey), oldNode);
         }
-        Entry.key = newKey;
+        Entry.encryptionKey = newKey;
 
-        save();
-        reload();
+        saveChanges();
+        reloadEntries();
         return true;
     }
 
-    public void replaceEntry(final int i, final Entry e) {
-        NodeList eList = root.getElementsByTagName(ENTRY_TAG);
-        root.replaceChild(e.toElement(doc, ENTRY_TAG), eList.item(i));
-        save();
-        reload();
+    /**
+     * Replaces an entry at the specified index with a new entry.
+     * @param index The index of the entry to replace.
+     * @param entry The new entry.
+     */
+    public void updateEntry(final int index, final Entry entry) {
+        NodeList entryList = rootElement.getElementsByTagName(ENTRY_TAG);
+        rootElement.replaceChild(entry.toXmlElement(document, ENTRY_TAG), entryList.item(index));
+        saveChanges();
+        reloadEntries();
     }
 
-    public void removeEntry(final int i) {
-        NodeList eList = root.getElementsByTagName(ENTRY_TAG);
-        root.removeChild(eList.item(i));
-        save();
-        reload();
+    /**
+     * Removes an entry at the specified index.
+     * @param index The index of the entry to remove.
+     */
+    public void deleteEntry(final int index) {
+        NodeList entryList = rootElement.getElementsByTagName(ENTRY_TAG);
+        rootElement.removeChild(entryList.item(index));
+        saveChanges();
+        reloadEntries();
     }
 
-    public void addEntry(final Entry e) {
-        root.appendChild(e.toElement(doc, ENTRY_TAG));
-        save();
-        reload();
+    /**
+     * Adds a new entry to the DataTable.
+     * @param entry The entry to add.
+     */
+    public void insertEntry(final Entry entry) {
+        rootElement.appendChild(entry.toXmlElement(document, ENTRY_TAG));
+        saveChanges();
+        reloadEntries();
     }
 
-    // GUI-specific methods
-    public void setFilter(final String s) {
-        filterStr = s;
+    /**
+     * Sets the filter string for filtering entries.
+     * @param filter The filter string.
+     */
+    public void setFilterString(final String filter) {
+        filterString = filter;
     }
 
-    public int getAbsId(final int i) {
-        return filtered.get(i).id;
+    /**
+     * Gets the absolute ID of the filtered entry at the specified index.
+     * @param index The index of the filtered entry.
+     * @return The absolute ID of the entry.
+     */
+    public int getAbsoluteId(final int index) {
+        return filteredEntries.get(index).id;
     }
 
+    /**
+     * Converts the filtered entries to a 2D array for table representation.
+     * @return A 2D array representing the filtered entries.
+     */
     public Object[][] toTableArray() {
-        filtered = filter(filterStr);
-        Object[][] res = new Object[filtered.size()][];
-        for (int i = 0; i < filtered.size(); ++i)
-            res[i] = filtered.get(i).toArray();
-        return res;
+        filteredEntries = filterEntries(filterString);
+        Object[][] result = new Object[filteredEntries.size()][];
+        for (int i = 0; i < filteredEntries.size(); ++i)
+            result[i] = filteredEntries.get(i).toArray();
+        return result;
     }
 
     // Private methods
-    private void save() {
-        save(doc, fname);
-        entries = root.getElementsByTagName(ENTRY_TAG);
+
+    /**
+     * Saves the current state of the document to the file.
+     */
+    private void saveChanges() {
+        saveDocument(document, fileName);
+        entryNodes = rootElement.getElementsByTagName(ENTRY_TAG);
     }
 
-    private static void save(Document doc, String fname) {
+    /**
+     * Saves the given document to the specified file.
+     * @param doc The document to save.
+     * @param fileName The name of the file.
+     */
+    private static void saveDocument(Document doc, String fileName) {
         String xsltContent =
             "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">\n" +
             "  <xsl:output indent=\"yes\"/>\n" +
@@ -145,29 +195,44 @@ public class DataTable extends ArrayList<Entry> {
             Transformer transformer = TransformerFactory.newInstance().newTransformer(new StreamSource(new StringReader(xsltContent)));
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-            transformer.transform(new DOMSource(doc), new StreamResult(new File(fname)));
+            transformer.transform(new DOMSource(doc), new StreamResult(new File(fileName)));
         } catch (TransformerException ex) {
             throw new RuntimeException("Cannot write to file", ex);
         }
     }
 
-    private void load() throws InvalidKeyException, ParserConfigurationException, SAXException, IOException {
-        doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(fname);
-        root = (Element) doc.getElementsByTagName(ROOT_TAG).item(0);
-        passTest = ((Element) root.getElementsByTagName(PASS_TEST_TAG).item(0)).getTextContent();
-        if (!Crypto.checkPassword(Entry.key, passTest))
+    /**
+     * Loads the document from the file and initializes the DataTable.
+     * @throws InvalidKeyException If the provided key is incorrect.
+     * @throws ParserConfigurationException If a DocumentBuilder cannot be created.
+     * @throws SAXException If any parse errors occur.
+     * @throws IOException If any IO errors occur.
+     */
+    private void loadDocument() throws InvalidKeyException, ParserConfigurationException, SAXException, IOException {
+        document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(fileName);
+        rootElement = (Element) document.getElementsByTagName(ROOT_TAG).item(0);
+        encryptedPassTest = ((Element) rootElement.getElementsByTagName(PASS_TEST_TAG).item(0)).getTextContent();
+        if (!Crypto.checkPassword(Entry.encryptionKey, encryptedPassTest))
             throw new InvalidKeyException("Incorrect password");
-        reload();
+        reloadEntries();
     }
 
-    private void reload() {
+    /**
+     * Reloads the entries from the document.
+     */
+    private void reloadEntries() {
         clear();
-        NodeList eList = root.getElementsByTagName(ENTRY_TAG);
-        for (int i = 0; i < eList.getLength(); ++i)
-            add(new Entry((Element) eList.item(i), i));
+        NodeList entryList = rootElement.getElementsByTagName(ENTRY_TAG);
+        for (int i = 0; i < entryList.getLength(); ++i)
+            add(new Entry((Element) entryList.item(i), i));
     }
 
-    private List<Entry> filter(final String s) {
-        return s.isEmpty() ? new ArrayList<>(this) : stream().filter(p -> p.like(s)).collect(Collectors.toList());
+    /**
+     * Filters the entries based on the filter string.
+     * @param filter The filter string.
+     * @return A list of filtered entries.
+     */
+    private List<Entry> filterEntries(final String filter) {
+        return filter.isEmpty() ? new ArrayList<>(this) : stream().filter(p -> p.contains(filter)).collect(Collectors.toList());
     }
 }

@@ -8,20 +8,33 @@ import org.w3c.dom.Node;
 
 public class Entry {
     public final int id;
-    public static byte[] key = null;
-    private String site;
-    private String login;
-    private String pass;
-    private String comment;
-    private String date;
+    public static byte[] encryptionKey = null;
+    private String website;
+    private String username;
+    private String password;
+    private String notes;
+    private String timestamp;
 
-    public Entry(final String site, final String login, final String pass, final String comment) {
+    private static final String WEBSITE_TAG = "site";
+    private static final String USERNAME_TAG = "login";
+    private static final String PASSWORD_TAG = "pass";
+    private static final String NOTES_TAG = "comment";
+    private static final String TIMESTAMP_TAG = "date";
+
+    /**
+     * Constructor to create a new Entry.
+     * @param website The website associated with the entry.
+     * @param username The username for the entry.
+     * @param password The password for the entry.
+     * @param notes Additional comments or notes.
+     */
+    public Entry(final String website, final String username, final String password, final String notes) {
         this.id = 0;
-        this.site = site;
-        this.login = login;
-        this.pass = Crypto.encryptString(key, pass);
-        this.comment = comment;
-        updateDate();
+        this.website = website;
+        this.username = username;
+        this.password = Crypto.encryptString(encryptionKey, password);
+        this.notes = notes;
+        updateTimestamp();
     }
 
     public Entry(Node node) {
@@ -34,73 +47,106 @@ public class Entry {
 
     public Entry(Element node, int id) {
         this.id = id;
-        this.site = Crypto.decryptString(key, node.getElementsByTagName("site").item(0).getTextContent());
-        this.login = Crypto.decryptString(key, node.getElementsByTagName("login").item(0).getTextContent());
-        this.pass = node.getElementsByTagName("pass").item(0).getTextContent();
-        this.comment = Crypto.decryptString(key, node.getElementsByTagName("comment").item(0).getTextContent());
-        this.date = node.getElementsByTagName("date").item(0).getTextContent();
+        this.website = Crypto.decryptString(encryptionKey, node.getElementsByTagName(WEBSITE_TAG).item(0).getTextContent());
+        this.username = Crypto.decryptString(encryptionKey, node.getElementsByTagName(USERNAME_TAG).item(0).getTextContent());
+        this.password = node.getElementsByTagName(PASSWORD_TAG).item(0).getTextContent();
+        this.notes = Crypto.decryptString(encryptionKey, node.getElementsByTagName(NOTES_TAG).item(0).getTextContent());
+        this.timestamp = node.getElementsByTagName(TIMESTAMP_TAG).item(0).getTextContent();
     }
 
-    public String getSite() {
-        return site;
+    public String getWebsite() {
+        return website;
     }
 
-    public String getLogin() {
-        return login;
+    public String getUsername() {
+        return username;
     }
 
-    public String getComment() {
-        return comment;
+    public String getNotes() {
+        return notes;
     }
 
-    public String getDate() {
-        return date;
+    public String getTimestamp() {
+        return timestamp;
     }
 
-    private static void addElement(Element el, final String tag, final String text) {
-        Element tmp = el.getOwnerDocument().createElement(tag);
-        tmp.setTextContent(text);
-        el.appendChild(tmp);
+    private static void addXmlElement(Element parentElement, final String tagName, final String textContent) {
+        Element newElement = parentElement.getOwnerDocument().createElement(tagName);
+        newElement.setTextContent(textContent);
+        parentElement.appendChild(newElement);
     }
 
-    public Element toElement(Document doc, String name) {
-        Element el = doc.createElement(name);
-        addElement(el, "site", Crypto.encryptString(key, site));
-        addElement(el, "login", Crypto.encryptString(key, login));
-        addElement(el, "pass", pass);
-        addElement(el, "comment", Crypto.encryptString(key, comment));
-        addElement(el, "date", date);
-        return el;
+    /**
+     * Converts the Entry to an XML Element.
+     * @param doc The XML Document.
+     * @param elementName The name of the XML Element.
+     * @return The XML Element representing the Entry.
+     */
+    public Element toXmlElement(Document doc, String elementName) {
+        Element element = doc.createElement(elementName);
+        addXmlElement(element, WEBSITE_TAG, Crypto.encryptString(encryptionKey, website));
+        addXmlElement(element, USERNAME_TAG, Crypto.encryptString(encryptionKey, username));
+        addXmlElement(element, PASSWORD_TAG, password);
+        addXmlElement(element, NOTES_TAG, Crypto.encryptString(encryptionKey, notes));
+        addXmlElement(element, TIMESTAMP_TAG, timestamp);
+        return element;
     }
 
-    public Element toElement(Document doc, String name, byte[] newKey) {
-        Element el = doc.createElement(name);
-        addElement(el, "site", Crypto.encryptString(newKey, site));
-        addElement(el, "login", Crypto.encryptString(newKey, login));
-        addElement(el, "pass", Crypto.encryptString(newKey, Crypto.decryptString(key, pass)));
-        addElement(el, "comment", Crypto.encryptString(newKey, comment));
-        addElement(el, "date", date);
-        return el;
+    /**
+     * Converts the Entry to an XML Element with a new encryption key.
+     * @param doc The XML Document.
+     * @param elementName The name of the XML Element.
+     * @param newKey The new encryption key.
+     * @return The XML Element representing the Entry.
+     */
+    public Element toXmlElement(Document doc, String elementName, byte[] newKey) {
+        Element element = doc.createElement(elementName);
+        addXmlElement(element, WEBSITE_TAG, Crypto.encryptString(newKey, website));
+        addXmlElement(element, USERNAME_TAG, Crypto.encryptString(newKey, username));
+        addXmlElement(element, PASSWORD_TAG, Crypto.encryptString(newKey, Crypto.decryptString(encryptionKey, password)));
+        addXmlElement(element, NOTES_TAG, Crypto.encryptString(newKey, notes));
+        addXmlElement(element, TIMESTAMP_TAG, timestamp);
+        return element;
     }
 
-    public boolean like(final String str) {
-        return site.contains(str) || login.contains(str) || comment.contains(str);
+    /**
+     * Checks if the entry contains the specified string in its website, username, or notes.
+     * @param searchString The string to search for.
+     * @return True if the string is found, otherwise false.
+     */
+    public boolean contains(final String searchString) {
+        return website.contains(searchString) || username.contains(searchString) || notes.contains(searchString);
     }
 
+    /**
+     * Converts the Entry to an array of strings.
+     * @return An array containing the website, username, notes, and timestamp.
+     */
     public String[] toArray() {
-        return new String[] { site, login, comment, date };
+        return new String[] { website, username, notes, timestamp };
     }
 
-    public String name() {
-        return site + " (" + login + ")";
+    /**
+     * Returns a formatted name for the entry.
+     * @return A string in the format "website (username)".
+     */
+    public String getFormattedName() {
+        return website + " (" + username + ")";
     }
 
+    /**
+     * Gets the decrypted password.
+     * @return The decrypted password.
+     */
     public String getPassword() {
-        return Crypto.decryptString(key, pass);
+        return Crypto.decryptString(encryptionKey, password);
     }
 
-    private void updateDate() {
-        SimpleDateFormat fmt = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
-        date = fmt.format(new Date());
+    /**
+     * Updates the timestamp to the current date and time.
+     */
+    private void updateTimestamp() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+        timestamp = dateFormat.format(new Date());
     }
 }

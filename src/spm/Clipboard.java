@@ -6,36 +6,55 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class Clipboard {
-    private static Timer timer = null;
+    private static Timer wipeTimer = null;
 
-    public static void copy(String str, int seconds) {
-        copy(str);
-        scheduleWipe(seconds);
+    /**
+     * Copies the specified string to the system clipboard and schedules a wipe after the specified number of seconds.
+     * @param text The text to copy to the clipboard.
+     * @param seconds The number of seconds after which the clipboard should be wiped.
+     */
+    public static void copyToClipboard(String text, int seconds) {
+        copyToClipboard(text);
+        scheduleClipboardWipe(seconds);
     }
 
-    public static void copy(String str) {
-        cancelTimer();
+    /**
+     * Copies the specified string to the system clipboard.
+     * @param text The text to copy to the clipboard.
+     */
+    public static void copyToClipboard(String text) {
+        cancelWipeTimer();
         Toolkit.getDefaultToolkit().getSystemClipboard()
-            .setContents(new StringSelection(str), null);
+            .setContents(new StringSelection(text), null);
     }
 
-    public static void wipe() {
-        copy("");
+    /**
+     * Wipes the system clipboard by copying an empty string to it.
+     */
+    public static void wipeClipboard() {
+        copyToClipboard("");
     }
 
-    private static void cancelTimer() {
-        if (timer != null) {
-            timer.cancel();
+    /**
+     * Cancels the scheduled clipboard wipe timer.
+     */
+    private static void cancelWipeTimer() {
+        if (wipeTimer != null) {
+            wipeTimer.cancel();
         }
-        timer = null;
+        wipeTimer = null;
     }
 
-    private static void scheduleWipe(int seconds) {
-        timer = new Timer();
-        timer.schedule(new TimerTask() {
+    /**
+     * Schedules a clipboard wipe after the specified number of seconds.
+     * @param seconds The number of seconds after which the clipboard should be wiped.
+     */
+    private static void scheduleClipboardWipe(int seconds) {
+        wipeTimer = new Timer();
+        wipeTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                wipe();
+                wipeClipboard();
             }
         }, seconds * 1000);
     }

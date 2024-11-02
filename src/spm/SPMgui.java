@@ -15,40 +15,46 @@ import java.io.File;
 import java.net.URL;
 
 public class SPMgui extends javax.swing.JFrame {
-    private final String iconPath = "/ico.png";
-    private final String dbPath = "spmdb.xml";
-    private final int passwordCopyTimeoutSec = 30;
-    private final String progTitle = "Simple Password Manager";
-    private final String version = "v1.4";
-    private DataTable dt = null;
-    private final String[] rowHeader = {"Site", "Login", "Comment", "Creation date"};
-    private ImageIcon icon;
+    private final String ICON_PATH = "/ico.png";
+    private final String DATABASE_PATH = "spmdb.xml";
+    private final int PASSWORD_COPY_TIMEOUT_SECONDS = 30;
+    private final String PROGRAM_TITLE = "Simple Password Manager";
+    private final String VERSION = "v1.4";
+    private DataTable dataTable = null;
+    private final String[] TABLE_HEADERS = {"Site", "Login", "Comment", "Creation date"};
+    private ImageIcon windowIcon;
 
     public SPMgui() {
         initComponents();
         setMinimumSize(getSize());
-        setTitle(progTitle);
+        setTitle(PROGRAM_TITLE);
         setWindowIcon();
-        setListeners();
+        setEventListeners();
         initializeDatabase();
-        updateTable();
+        refreshTable();
     }
 
+    /**
+     * Sets the window icon.
+     */
     private void setWindowIcon() {
         try {
-            URL url = SPMgui.class.getResource(iconPath);
-            icon = new ImageIcon(url);
-            setIconImage(icon.getImage());
+            URL url = SPMgui.class.getResource(ICON_PATH);
+            windowIcon = new ImageIcon(url);
+            setIconImage(windowIcon.getImage());
         } catch (Exception ex) {
             // Handle exception
         }
     }
 
-    private void setListeners() {
+    /**
+     * Sets the event listeners for the window and filter field.
+     */
+    private void setEventListeners() {
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent evt) {
-                close();
+                onClose();
             }
         });
         filterField.getDocument().addDocumentListener(new DocumentListener() {
@@ -69,97 +75,144 @@ public class SPMgui extends javax.swing.JFrame {
         });
     }
 
+    /**
+     * Initializes the database.
+     */
     private void initializeDatabase() {
-        if (!testFile(dbPath)) {
-            JOptionPane.showMessageDialog(null, "DataBase file \"" + dbPath + "\" not found.", "Warning", JOptionPane.WARNING_MESSAGE);
-            byte[] key = AppDialogs.newPasswd();
+        if (!isFileExists(DATABASE_PATH)) {
+            JOptionPane.showMessageDialog(null, "Database file \"" + DATABASE_PATH + "\" not found.", "Warning", JOptionPane.WARNING_MESSAGE);
+            byte[] key = AppDialogs.promptForNewMasterPassword();
             if (key == null) System.exit(0);
-            DataTable.createDB(dbPath, key);
+            DataTable.createDatabase(DATABASE_PATH, key);
         }
 
         try {
-            InvalidKeyException errPass;
+            InvalidKeyException invalidKeyException;
             do {
-                errPass = null;
+                invalidKeyException = null;
                 try {
-                    Entry.key = AppDialogs.passwd(progTitle);
-                    if (Entry.key == null) System.exit(0);
-                    dt = new DataTable(dbPath);
+                    Entry.encryptionKey = AppDialogs.promptForMasterPassword(PROGRAM_TITLE);
+                    if (Entry.encryptionKey == null) System.exit(0);
+                    dataTable = new DataTable(DATABASE_PATH);
                 } catch (InvalidKeyException ex) {
-                    errPass = ex;
+                    invalidKeyException = ex;
                 }
-            } while (errPass != null);
+            } while (invalidKeyException != null);
         } catch (Exception ex) {
-            error(ex.toString());
+            showError(ex.toString());
         }
-        info("");
+        showInfo("");
     }
 
-    private boolean testFile(String fname) {
-        File f = new File(fname);
-        return f.exists() && f.isFile();
+    /**
+     * Checks if a file exists.
+     * @param fileName the name of the file
+     * @return true if the file exists, false otherwise
+     */
+    private boolean isFileExists(String fileName) {
+        File file = new File(fileName);
+        return file.exists() && file.isFile();
     }
 
-    private void error(final String err) {
-        error(err, 1);
+    /**
+     * Shows an error message and exits the application.
+     * @param errorMessage the error message
+     */
+    private void showError(final String errorMessage) {
+        showError(errorMessage, 1);
     }
 
-    private void error(final String err, int exitCode) {
-        JOptionPane.showMessageDialog(null, err, "Error", JOptionPane.ERROR_MESSAGE);
+    /**
+     * Shows an error message and exits the application with the specified exit code.
+     * @param errorMessage the error message
+     * @param exitCode the exit code
+     */
+    private void showError(final String errorMessage, int exitCode) {
+        JOptionPane.showMessageDialog(null, errorMessage, "Error", JOptionPane.ERROR_MESSAGE);
         System.exit(exitCode);
     }
 
-    private void info(final String str) {
-        infoLabel.setText(str);
+    /**
+     * Shows an informational message.
+     * @param message the informational message
+     */
+    private void showInfo(final String message) {
+        infoLabel.setText(message);
     }
 
+    /**
+     * Updates the filter for the table.
+     */
     private void updateFilter() {
-        dt.setFilter(filterField.getText());
-        updateTable();
+        dataTable.setFilterString(filterField.getText());
+        refreshTable();
     }
 
-    private void updateTable() {
-        Object[][] con = dt.toTableArray();
-        ((DefaultTableModel) conTable.getModel()).setDataVector(con, rowHeader);
+    /**
+     * Refreshes the table with the latest data.
+     */
+    private void refreshTable() {
+        Object[][] content = dataTable.toTableArray();
+        ((DefaultTableModel) conTable.getModel()).setDataVector(content, TABLE_HEADERS);
     }
 
-    private void copyCell(final int col, final int row) {
-        Object cb = conTable.getModel().getValueAt(row, col);
-        Clipboard.copy(cb.toString());
+    /**
+     * Copies the content of a cell to the clipboard.
+     * @param col the column index
+     * @param row the row index
+     */
+    private void copyCellContent(final int col, final int row) {
+        Object cellContent = conTable.getModel().getValueAt(row, col);
+        Clipboard.copyToClipboard(cellContent.toString());
     }
 
-    private void copyPass(final int row) {
-        int absId = dt.getAbsId(row);
-        String cb = dt.get(absId).getPassword();
-        Clipboard.copy(cb, passwordCopyTimeoutSec);
-        info("Password for " + dt.get(absId).name() + " copied to the clipboard");
+    /**
+     * Copies the password of an entry to the clipboard.
+     * @param row the row index
+     */
+    private void copyPassword(final int row) {
+        int absoluteId = dataTable.getAbsoluteId(row);
+        String password = dataTable.get(absoluteId).getPassword();
+        Clipboard.copyToClipboard(password, PASSWORD_COPY_TIMEOUT_SECONDS);
+        showInfo("Password for " + dataTable.get(absoluteId).getFormattedName() + " copied to the clipboard");
     }
 
+    /**
+     * Deletes an entry from the table.
+     * @param row the row index
+     */
     private void deleteEntry(final int row) {
-        int absId = dt.getAbsId(row);
-        if (JOptionPane.showConfirmDialog(null, "Delete entry for \"" + dt.get(absId).name() + "\"?", "Delete entry", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION)
+        int absoluteId = dataTable.getAbsoluteId(row);
+        if (JOptionPane.showConfirmDialog(null, "Delete entry for \"" + dataTable.get(absoluteId).getFormattedName() + "\"?", "Delete entry", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION)
             return;
-        dt.removeEntry(absId);
-        updateTable();
+        dataTable.deleteEntry(absoluteId);
+        refreshTable();
     }
 
+    /**
+     * Edits an entry in the table.
+     * @param row the row index
+     */
     private void editEntry(final int row) {
-        int absId = dt.getAbsId(row);
-        Entry e = AppDialogs.changeEntry(dt.get(absId));
-        if (e == null) return;
-        dt.replaceEntry(absId, e);
-        updateTable();
+        int absoluteId = dataTable.getAbsoluteId(row);
+        Entry entry = AppDialogs.promptForEntryEdit(dataTable.get(absoluteId));
+        if (entry == null) return;
+        dataTable.updateEntry(absoluteId, entry);
+        refreshTable();
     }
 
-    private void newEntry() {
-        Entry e = AppDialogs.newEntry();
-        if (e == null) return;
+    /**
+     * Adds a new entry to the table.
+     */
+    private void addNewEntry() {
+        Entry entry = AppDialogs.promptForNewEntry();
+        if (entry == null) return;
         try {
-            dt.addEntry(e);
+            dataTable.insertEntry(entry);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(null, "Can't create record", "Error", JOptionPane.ERROR_MESSAGE);
         }
-        updateTable();
+        refreshTable();
     }
 
     /**
@@ -330,28 +383,38 @@ public class SPMgui extends javax.swing.JFrame {
         }
     }
 
-    private void openLink(String l) {
+    /**
+     * Opens a link in the default browser.
+     * @param link the link to open
+     */
+    private void openLink(String link) {
         try {
-            if (!l.startsWith("http"))
-                l = "http://" + l;
-            java.awt.Desktop.getDesktop().browse(new java.net.URI(l));
+            if (!link.startsWith("http"))
+                link = "http://" + link;
+            java.awt.Desktop.getDesktop().browse(new java.net.URI(link));
         } catch (Exception ex) {
             // Handle exception
         }
     }
 
-    private void PopUpMenu(java.awt.event.MouseEvent evt, int col, int row) {
+    /**
+     * Displays a popup menu with options for the selected cell.
+     * @param evt the mouse event
+     * @param col the column index
+     * @param row the row index
+     */
+    private void showPopupMenu(java.awt.event.MouseEvent evt, int col, int row) {
         PopUpMouseListener[] popUpListeners = new PopUpMouseListener[]{
             new PopUpMouseListener() {
                 @Override
                 public void mouseReleased(MouseEvent e) {
-                    copyCell(col, row);
+                    copyCellContent(col, row);
                 }
             },
             new PopUpMouseListener() {
                 @Override
                 public void mouseReleased(MouseEvent e) {
-                    copyPass(row);
+                    copyPassword(row);
                 }
             },
             new PopUpMouseListener() {
@@ -371,21 +434,21 @@ public class SPMgui extends javax.swing.JFrame {
 
         JPopupMenu menu = new JPopupMenu();
         if (col == 0) {
-            String l = (String) conTable.getModel().getValueAt(row, col);
-            JMenuItem it = new JMenuItem("Open link");
-            it.addMouseListener(new PopUpMouseListener() {
+            String link = (String) conTable.getModel().getValueAt(row, col);
+            JMenuItem menuItem = new JMenuItem("Open link");
+            menuItem.addMouseListener(new PopUpMouseListener() {
                 @Override
                 public void mouseReleased(MouseEvent e) {
-                    openLink(l);
+                    openLink(link);
                 }
             });
-            menu.add(it);
+            menu.add(menuItem);
         }
 
         for (int i = 0; i < popUpNames.length; ++i) {
-            JMenuItem it = new JMenuItem(popUpNames[i]);
-            it.addMouseListener(popUpListeners[i]);
-            menu.add(it);
+            JMenuItem menuItem = new JMenuItem(popUpNames[i]);
+            menuItem.addMouseListener(popUpListeners[i]);
+            menu.add(menuItem);
         }
 
         menu.show(evt.getComponent(), evt.getX(), evt.getY());
@@ -396,22 +459,22 @@ public class SPMgui extends javax.swing.JFrame {
         int row = conTable.rowAtPoint(new Point(evt.getX(), evt.getY()));
         if (col == -1 || row == -1) return;
         conTable.changeSelection(row, col, false, false);
-        if (SwingUtilities.isRightMouseButton(evt)) PopUpMenu(evt, col, row);
-        if (SwingUtilities.isLeftMouseButton(evt) && evt.getClickCount() == 2) copyPass(row);
+        if (SwingUtilities.isRightMouseButton(evt)) showPopupMenu(evt, col, row);
+        if (SwingUtilities.isLeftMouseButton(evt) && evt.getClickCount() == 2) copyPassword(row);
     }//GEN-LAST:event_conTableMouseReleased
 
     private void addButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addButtonActionPerformed
-        newEntry();
+        addNewEntry();
     }//GEN-LAST:event_addButtonActionPerformed
 
     private void cmpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmpButtonActionPerformed
-        AppDialogs.KeyPair kp = AppDialogs.changePasswd((key) -> dt.checkMasterPass((byte[]) key) ? "ok" : null);
-        if (kp == null) return;
-        if (dt.changeMasterPass(kp.oldKey, kp.newKey))
+        AppDialogs.KeyPair keyPair = AppDialogs.promptForPasswordChange((key) -> dataTable.verifyMasterPassword((byte[]) key) ? "ok" : null);
+        if (keyPair == null) return;
+        if (dataTable.updateMasterPassword(keyPair.oldKey, keyPair.newKey))
             JOptionPane.showMessageDialog(null, "Password change ok", "Info", JOptionPane.INFORMATION_MESSAGE);
         else
             JOptionPane.showMessageDialog(null, "Password change error", "Error", JOptionPane.ERROR_MESSAGE);
-        updateTable();
+        refreshTable();
     }//GEN-LAST:event_cmpButtonActionPerformed
 
     private void clrButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clrButtonActionPerformed
@@ -419,14 +482,19 @@ public class SPMgui extends javax.swing.JFrame {
     }//GEN-LAST:event_clrButtonActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        AppDialogs.about(progTitle, version, icon);
+        AppDialogs.showAboutDialog(PROGRAM_TITLE, VERSION, windowIcon);
     }//GEN-LAST:event_jButton1ActionPerformed
 
-
-    private void close() {
-        Clipboard.wipe();
+    /**
+     * Handles the window close event.
+     */
+    private void onClose() {
+        Clipboard.wipeClipboard();
     }
 
+    /**
+     * Sets the look and feel of the application.
+     */
     public static void setLookAndFeel() {
         try {
             javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
