@@ -3,7 +3,7 @@
 
 A simple program that locally stores your passwords in an encrypted form.
 
-## Features
+### Features
 - Sufficient encryption (AES 128bit)
 - Lightweight
 - Multi-platform
