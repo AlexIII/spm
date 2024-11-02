@@ -90,7 +90,7 @@ public class AppDialogs {
         Object[] ret = InputDialog.show(new java.awt.Frame(), title,
             new String[] {"Site", "Login", "Password", "Comment"},
             e == null? null : new String[] {e.getSite(), e.getLogin(), e.getPassword(), e.getComment()},
-            new int[] {InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_PASSWORD|InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_NORMAL}
+            new int[] {InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_PASSWORD|InputDialog.FIELD_GEN_PASSWORD|InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_NORMAL}
         );
         if(ret == null) return null;
         e = new Entry((String)ret[0], (String)ret[1], new String(((char[])ret[2])), (String)ret[3]);

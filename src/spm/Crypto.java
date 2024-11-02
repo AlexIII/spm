@@ -70,7 +70,19 @@ public class Crypto {
         for(int i = 0; i < p.length; ++i)
             p[i] = 0;
         return ret;
-    }  
+    }
+
+    static public char[] generatePassword() {
+        return generatePassword(16);
+    }
+
+    static public char[] generatePassword(int len) {
+        char[] pass = new char[len];
+        for(int i = 0; i < len; ++i) {
+            pass[i] = (char) (random.nextInt(94) + 33);
+        }
+        return pass;
+    }
     
 //private
     static private final String cipher_type = "AES/CBC/PKCS5Padding";

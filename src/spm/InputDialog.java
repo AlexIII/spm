@@ -6,6 +6,7 @@
 package spm;
 
 import javax.swing.JOptionPane;
+import java.awt.Insets;
 
 /**
  *
@@ -16,6 +17,7 @@ public class InputDialog extends java.awt.Dialog {
     public static final int FIELD_NORMAL = 0;
     public static final int FIELD_PASSWORD = 1<<0;
     public static final int FIELD_NOTEMPTY = 1<<1;
+    public static final int FIELD_GEN_PASSWORD = 1<<2;
     
     public interface CheckFields {
         public String check(Object[] fields);
@@ -65,16 +67,20 @@ public class InputDialog extends java.awt.Dialog {
     
     private InputDialog(java.awt.Frame parent, String title, String[] labelNames, String[] defValues, int[] fieldMode, CheckFields checkMulti, CheckField checkSingle) {
         super(parent, true);
-        initComponents(title, labelNames, defValues, fieldMode);
         this.fieldMode = fieldMode;
         this.checkMulti = checkMulti;
         this.checkSingle = checkSingle;
+        initComponents(title, labelNames, defValues);
     }
     
-    private void initComponents(String title, String[] labelNames, String[] defValues, int[] fieldMode) {
+    private void initComponents(String title, String[] labelNames, String[] defValues) {
         //create components
         okButt = new javax.swing.JButton("OK");
-        cancelButt = new javax.swing.JButton("Cancel");   
+        genPassButt = new javax.swing.JButton("↻");
+        Insets genPassButtMargin = genPassButt.getMargin();
+        genPassButt.setMargin(new Insets(genPassButtMargin.top, 5, genPassButtMargin.bottom, 5));
+        genPassButt.setToolTipText("Generate password and copy to clipboard");
+        cancelButt = new javax.swing.JButton("Cancel");
         labels = new javax.swing.JLabel[labelNames.length];
         fields = new javax.swing.JTextField[labelNames.length];
         for(int i = 0; i < labelNames.length; ++i) {
@@ -101,6 +107,16 @@ public class InputDialog extends java.awt.Dialog {
         });        
         cancelButt.addActionListener((evt) -> {close();});
         okButt.addActionListener((evt) -> {ok();});
+        genPassButt.addActionListener((evt) -> {
+            for(int i = 0; i < fields.length; ++i) {
+                if((fieldMode[i]&FIELD_GEN_PASSWORD) != 0) {
+                    String passwd = new String(Crypto.generatePassword());
+                    Clipboard.copy(passwd, 30);
+                    fields[i].setText(passwd);
+                    break;
+                }
+            }
+        });
         fields[fields.length-1].addActionListener((evt) -> {ok();});
         
         //layout
@@ -118,15 +134,20 @@ public class InputDialog extends java.awt.Dialog {
         //Horizontal
         javax.swing.GroupLayout.ParallelGroup horLabels = layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING);
         javax.swing.GroupLayout.ParallelGroup horFields = layout.createParallelGroup();
+        javax.swing.GroupLayout.ParallelGroup horButt = layout.createParallelGroup();
         for(int i = 0; i < fields.length; ++i) {
             horLabels.addComponent(labels[i]);
             horFields.addComponent(fields[i]);
+            if((fieldMode[i]&FIELD_GEN_PASSWORD) != 0) {
+                horButt.addComponent(genPassButt);
+            }
         }
         javax.swing.GroupLayout.SequentialGroup horLF = 
             layout.createSequentialGroup()
                 .addGroup(horLabels)
                 .addGroup(horFields)
         ;
+        horLF.addGroup(horButt);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
                 .addGroup(horLF)
@@ -139,12 +160,16 @@ public class InputDialog extends java.awt.Dialog {
         
         //Vertical
         javax.swing.GroupLayout.SequentialGroup verLF = layout.createSequentialGroup();
-        for(int i = 0; i < fields.length; ++i)
-            verLF.addGroup(
+        for(int i = 0; i < fields.length; ++i) {
+            javax.swing.GroupLayout.ParallelGroup g =
                 layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(labels[i])
-                    .addComponent(fields[i])
-            );
+                    .addComponent(fields[i]);
+            if((fieldMode[i]&FIELD_GEN_PASSWORD) != 0) {
+                g.addComponent(genPassButt);
+            }
+            verLF.addGroup(g);
+        }
         layout.setVerticalGroup(
             layout.createSequentialGroup()
                 .addGroup(verLF)                
@@ -227,6 +252,7 @@ public class InputDialog extends java.awt.Dialog {
     }
     
     private javax.swing.JButton okButt;
+    private javax.swing.JButton genPassButt;
     private javax.swing.JButton cancelButt;
     private javax.swing.JLabel[] labels;
     private javax.swing.JTextField[] fields;
