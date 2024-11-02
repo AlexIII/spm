@@ -29,7 +29,7 @@ public class SPMgui extends javax.swing.JFrame {
     private final int passwordCopyTimeoutSec = 30;
     
     private final String progTitle = "Simple Password Manager";
-    private final String version = "v1.3";
+    private final String version = "v1.4";
     
     private DataTable dt = null;
     private final String[] rowHeader = {"Site","Login","Comment","Creation date"};
