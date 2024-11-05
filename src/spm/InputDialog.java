@@ -1,5 +1,7 @@
 package spm;
 
+import java.util.List;
+import java.util.Collection;
 import javax.swing.*;
 import java.awt.*;
 
@@ -9,95 +11,154 @@ public class InputDialog extends Dialog {
     public static final int FIELD_NOTEMPTY = 1 << 1;
     public static final int FIELD_GEN_PASSWORD = 1 << 2;
 
-    public interface FieldValidator {
-        String validate(Object[] fields);
+    /**
+     * Interface for validating a single field.
+     */
+    public static interface FieldValidator {
+        /**
+         * Validates a single field.
+         * 
+         * @param value String or char[] field
+         * @return error message or null if valid
+         */
+        String validate(Object value);
     }
 
-    public interface SingleFieldValidator {
-        String validate(Object field);
+    /**
+     * Interface for validating multiple fields.
+     */
+    public static interface FieldsValidator {
+        /**
+         * Validates multiple fields.
+         * 
+         * @param value String[] or char[][] field
+         * @return error message or null if valid
+         */
+        String validate(Object[] value);
     }
 
-    public static Object show(Frame parent, String title) {
-        return show(parent, title, (String) null);
+    public static class Field {
+        public final String label;
+        public final String defaultValue;
+        public final int mode;
+        public final FieldValidator validator;
+        
+        public Field(String label) {
+            this(label, "", 0, null);
+        }
+
+        public Field(String label, String defaultValue) {
+            this(label, defaultValue, 0, null);
+        }
+
+        public Field(String label, String defaultValue, int mode) {
+            this(label, defaultValue, mode, null);
+        }
+
+        public Field(String label, int mode) {
+            this(label, null, mode, null);
+        }
+
+        public Field(String label, int mode, FieldValidator validator) {
+            this(label, null, mode, validator);
+        }
+
+        public Field(String label, String defaultValue, int mode, FieldValidator validator) {
+            this.label = label;
+            this.defaultValue = defaultValue;
+            this.mode = mode;
+            if ((mode & FIELD_NOTEMPTY) != 0) {
+                this.validator = (value) -> {
+                    final boolean empty = value instanceof char[] ? ((char[]) value).length < 1 : ((String) value).isBlank();
+                    if(empty) return "Field " + label + " cannot be empty";
+                    if(validator != null) return validator.validate(value);
+                    return null;
+                };
+            } else {
+                this.validator = validator;
+            }
+        }
     }
 
-    public static Object show(Frame parent, String title, String labelName) {
-        return show(parent, title, labelName, null);
+    private static class FieldInt extends Field {
+        public Object result; // String or char[] field
+        public JLabel uiLabel;
+        public JTextField uiTextField;
+        public JButton uiButton;
+
+        public FieldInt(Field field) {
+            super(field.label, field.defaultValue, field.mode, field.validator);
+            uiLabel = new JLabel(label);
+            uiTextField = (mode & FIELD_PASSWORD) != 0 ? new JPasswordField() : new JTextField();
+            uiTextField.setColumns(25);
+            if (defaultValue != null) {
+                uiTextField.setText(defaultValue);
+            }
+            uiButton = (mode & FIELD_GEN_PASSWORD) != 0 ? new JButton("↻") : null;
+        }
     }
 
-    public static Object show(Frame parent, String title, String labelName, String defaultValue) {
-        return show(parent, title, labelName, defaultValue, 0);
+    private final List<FieldInt> fields;
+    private final FieldsValidator validator;
+    private boolean isConfirmed = false;
+
+    /**
+     * Shows a dialog with a single input field.
+     * 
+     * @param parent the parent frame
+     * @param title the title of the dialog
+     * @param field the field to be displayed
+     * @return the input value (String or char[] for password) or null if cancelled
+     */
+    public static Object show(Frame parent, String title, Field field) {
+        Object[] result = show(parent, title, List.of(field));
+        return result != null ? result[0] : null;
     }
 
-    public static Object show(Frame parent, String title, String labelName, String defaultValue, int fieldMode) {
-        return show(parent, title, labelName, defaultValue, fieldMode, null);
+    /**
+     * Shows a dialog with multiple input fields.
+     * 
+     * @param parent the parent frame
+     * @param title the title of the dialog
+     * @param fields the collection of fields to be displayed
+     * @return an array of input values (String or char[] for password) or null if cancelled
+     */
+    public static Object[] show(Frame parent, String title, Collection<Field> fields) {
+        return show(parent, title, fields, null);
     }
-
-    public static Object show(Frame parent, String title, String labelName, String defaultValue, int fieldMode, SingleFieldValidator singleFieldValidator) {
-        Object[] result = show(parent, title, new String[]{labelName}, new String[]{defaultValue}, new int[]{fieldMode}, null, singleFieldValidator);
-        return result != null && result.length > 0 ? result[0] : null;
-    }
-
-    public static Object[] show(Frame parent, String title, String[] labelNames) {
-        return show(parent, title, labelNames, null);
-    }
-
-    public static Object[] show(Frame parent, String title, String[] labelNames, String[] defaultValues) {
-        return show(parent, title, labelNames, defaultValues, null);
-    }
-
-    public static Object[] show(Frame parent, String title, String[] labelNames, String[] defaultValues, int[] fieldModes) {
-        return show(parent, title, labelNames, defaultValues, fieldModes, null);
-    }
-
-    public static Object[] show(Frame parent, String title, String[] labelNames, String[] defaultValues, int[] fieldModes, FieldValidator fieldValidator) {
-        return show(parent, title, labelNames, defaultValues, fieldModes, fieldValidator, null);
-    }
-
-    private static Object[] show(Frame parent, String title, String[] labelNames, String[] defaultValues, int[] fieldModes, FieldValidator fieldValidator, SingleFieldValidator singleFieldValidator) {
-        InputDialog dialog = new InputDialog(parent, title, labelNames, defaultValues, fieldModes, fieldValidator, singleFieldValidator);
+    
+    /**
+     * Shows a dialog with multiple input fields and a custom validator.
+     * 
+     * @param parent the parent frame
+     * @param title the title of the dialog
+     * @param fields the collection of fields to be displayed
+     * @param validator the custom validator for the fields
+     * @return an array of input values (String or char[] for password) or null if cancelled
+     */
+    public static Object[] show(Frame parent, String title, Collection<Field> fields, FieldsValidator validator) {
+        final InputDialog dialog = new InputDialog(parent, title, fields, validator);
         dialog.setVisible(true);
-        Object[] result = dialog.result;
+        final Object[] results = dialog.fields.stream().map(f -> f.result).toArray();
         dialog.dispose();
-        return result;
+        return dialog.isConfirmed ? results : null;
     }
 
-    private InputDialog(Frame parent, String title, String[] labelNames, String[] defaultValues, int[] fieldModes, FieldValidator fieldValidator, SingleFieldValidator singleFieldValidator) {
+    private InputDialog(Frame parent, String title, Collection<Field> fields, FieldsValidator validator) {
         super(parent, true);
-        this.fieldModes = fieldModes;
-        this.fieldValidator = fieldValidator;
-        this.singleFieldValidator = singleFieldValidator;
-        initializeComponents(title, labelNames, defaultValues);
+        this.fields = fields.stream().map(FieldInt::new).toList();
+        this.validator = validator;
+        initializeComponents(title);
     }
 
     /**
      * Initializes the components of the dialog.
      *
-     * @param title        the title of the dialog
-     * @param labelNames   the names of the labels
-     * @param defaultValues the default values for the fields
+     * @param title the title of the dialog
      */
-    private void initializeComponents(String title, String[] labelNames, String[] defaultValues) {
+    private void initializeComponents(String title) {
         okButton = new JButton("OK");
-        generatePasswordButton = new JButton("↻");
-        Insets buttonMargin = generatePasswordButton.getMargin();
-        generatePasswordButton.setMargin(new Insets(buttonMargin.top, 5, buttonMargin.bottom, 5));
-        generatePasswordButton.setToolTipText("Generate password and copy to clipboard");
         cancelButton = new JButton("Cancel");
-        labels = new JLabel[labelNames.length];
-        textFields = new JTextField[labelNames.length];
-
-        for (int i = 0; i < labelNames.length; ++i) {
-            labels[i] = new JLabel(labelNames[i]);
-            textFields[i] = (fieldModes != null && i < fieldModes.length && (fieldModes[i] & FIELD_PASSWORD) != 0) ? new JPasswordField() : new JTextField();
-            textFields[i].setColumns(25);
-        }
-
-        if (defaultValues != null) {
-            for (int i = 0; i < defaultValues.length && i < textFields.length; ++i) {
-                textFields[i].setText(defaultValues[i]);
-            }
-        }
 
         setResizable(false);
         setTitle(title);
@@ -110,42 +171,40 @@ public class InputDialog extends Dialog {
             }
         });
 
+        fields.stream().forEach(f -> {
+            if ((f.mode & FIELD_GEN_PASSWORD) != 0) {
+                Insets buttonMargin = f.uiButton.getMargin();
+                f.uiButton.setMargin(new Insets(buttonMargin.top, 5, buttonMargin.bottom, 5));
+                f.uiButton.setToolTipText("Generate password and copy to clipboard");
+                f.uiButton.addActionListener(evt -> {
+                    String password = new String(Crypto.generatePassword());
+                    Clipboard.copyToClipboard(password, 30);
+                    f.uiTextField.setText(password);
+                });
+            }
+        });
+
         cancelButton.addActionListener(evt -> closeDialog());
         okButton.addActionListener(evt -> confirmInput());
-        generatePasswordButton.addActionListener(evt -> generatePassword());
-        textFields[textFields.length - 1].addActionListener(evt -> confirmInput());
+        fields.get(fields.size() - 1).uiTextField.addActionListener(evt -> confirmInput());
 
-        setLayout(createLayout(labelNames.length > 1));
+        setLayout(createLayout());
         pack();
         setLocationRelativeTo(null);
     }
 
-    /**
-     * Generates a password and copies it to the clipboard.
-     */
-    private void generatePassword() {
-        for (int i = 0; i < textFields.length; ++i) {
-            if ((fieldModes[i] & FIELD_GEN_PASSWORD) != 0) {
-                String password = new String(Crypto.generatePassword());
-                Clipboard.copyToClipboard(password, 30);
-                textFields[i].setText(password);
-                break;
-            }
-        }
-    }
 
     /**
      * Creates the layout for the dialog.
      *
-     * @param isMulti whether the dialog has multiple fields
      * @return the created layout
      */
-    private GroupLayout createLayout(boolean isMulti) {
+    private GroupLayout createLayout() {
         GroupLayout layout = new GroupLayout(this);
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
 
-        if (isMulti) {
+        if (fields.size() > 1) {
             createMultiFieldLayout(layout);
         } else {
             createSingleFieldLayout(layout);
@@ -164,44 +223,44 @@ public class InputDialog extends Dialog {
         GroupLayout.ParallelGroup horizontalFields = layout.createParallelGroup();
         GroupLayout.ParallelGroup horizontalButtons = layout.createParallelGroup();
 
-        for (int i = 0; i < textFields.length; ++i) {
-            horizontalLabels.addComponent(labels[i]);
-            horizontalFields.addComponent(textFields[i]);
-            if ((fieldModes[i] & FIELD_GEN_PASSWORD) != 0) {
-                horizontalButtons.addComponent(generatePasswordButton);
+        fields.stream().forEach(f -> {
+            horizontalLabels.addComponent(f.uiLabel);
+            horizontalFields.addComponent(f.uiTextField);
+            if ((f.mode & FIELD_GEN_PASSWORD) != 0) {
+                horizontalButtons.addComponent(f.uiButton);
             }
-        }
+        });
 
         GroupLayout.SequentialGroup horizontalGroup = layout.createSequentialGroup()
-                .addGroup(horizontalLabels)
-                .addGroup(horizontalFields)
-                .addGroup(horizontalButtons);
+            .addGroup(horizontalLabels)
+            .addGroup(horizontalFields)
+            .addGroup(horizontalButtons);
 
         layout.setHorizontalGroup(
-                layout.createParallelGroup(GroupLayout.Alignment.CENTER)
-                        .addGroup(horizontalGroup)
-                        .addGroup(layout.createSequentialGroup()
-                                .addComponent(okButton)
-                                .addComponent(cancelButton))
+            layout.createParallelGroup(GroupLayout.Alignment.CENTER)
+                .addGroup(horizontalGroup)
+                .addGroup(layout.createSequentialGroup()
+                    .addComponent(okButton)
+                    .addComponent(cancelButton))
         );
 
         GroupLayout.SequentialGroup verticalGroup = layout.createSequentialGroup();
-        for (int i = 0; i < textFields.length; ++i) {
+        fields.stream().forEach(f -> {
             GroupLayout.ParallelGroup group = layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                    .addComponent(labels[i])
-                    .addComponent(textFields[i]);
-            if ((fieldModes[i] & FIELD_GEN_PASSWORD) != 0) {
-                group.addComponent(generatePasswordButton);
+                .addComponent(f.uiLabel)
+                .addComponent(f.uiTextField);
+            if ((f.mode & FIELD_GEN_PASSWORD) != 0) {
+                group.addComponent(f.uiButton);
             }
             verticalGroup.addGroup(group);
-        }
+        });
 
         layout.setVerticalGroup(
-                layout.createSequentialGroup()
-                        .addGroup(verticalGroup)
-                        .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                .addComponent(okButton)
-                                .addComponent(cancelButton))
+            layout.createSequentialGroup()
+                .addGroup(verticalGroup)
+                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                    .addComponent(okButton)
+                    .addComponent(cancelButton))
         );
     }
 
@@ -212,21 +271,21 @@ public class InputDialog extends Dialog {
      */
     private void createSingleFieldLayout(GroupLayout layout) {
         layout.setHorizontalGroup(
-                layout.createParallelGroup(GroupLayout.Alignment.CENTER)
-                        .addComponent(labels[0])
-                        .addComponent(textFields[0])
-                        .addGroup(layout.createSequentialGroup()
-                                .addComponent(okButton)
-                                .addComponent(cancelButton))
+            layout.createParallelGroup(GroupLayout.Alignment.CENTER)
+                .addComponent(fields.get(0).uiLabel)
+                .addComponent(fields.get(0).uiTextField)
+                .addGroup(layout.createSequentialGroup()
+                    .addComponent(okButton)
+                    .addComponent(cancelButton))
         );
 
         layout.setVerticalGroup(
-                layout.createSequentialGroup()
-                        .addComponent(labels[0])
-                        .addComponent(textFields[0])
-                        .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                .addComponent(okButton)
-                                .addComponent(cancelButton))
+            layout.createSequentialGroup()
+                .addComponent(fields.get(0).uiLabel)
+                .addComponent(fields.get(0).uiTextField)
+                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                    .addComponent(okButton)
+                    .addComponent(cancelButton))
         );
     }
 
@@ -241,52 +300,41 @@ public class InputDialog extends Dialog {
      * Confirms the input and validates it.
      */
     private void confirmInput() {
-        Object[] input = new Object[textFields.length];
-        for (int i = 0; i < textFields.length; ++i) {
-            input[i] = textFields[i] instanceof JPasswordField ? ((JPasswordField) textFields[i]).getPassword() : textFields[i].getText();
-        }
-
-        if (!validateInput(input)) {
-            result = null;
-            return;
-        }
-        result = input;
+        fields.stream().forEach(f -> {
+            f.result = (f.uiTextField instanceof JPasswordField)
+                ? ((JPasswordField) f.uiTextField).getPassword()
+                : f.uiTextField.getText();
+        });
+        if (!validateResults()) return;
+        isConfirmed = true;
         setVisible(false);
     }
 
     /**
      * Validates the input fields.
      *
-     * @param input the input fields
      * @return true if the input is valid, false otherwise
      */
-    private boolean validateInput(Object[] input) {
-        for (int i = 0; i < input.length; ++i) {
-            if (fieldModes != null && i < fieldModes.length && (fieldModes[i] & FIELD_NOTEMPTY) != 0) {
-                if ((input[i] instanceof char[] ? ((char[]) input[i]).length : ((String) input[i]).length()) < 1) {
-                    JOptionPane.showMessageDialog(null, "\"" + labels[i].getText() + "\" field cannot be empty",
-                            "Warning: Empty field", JOptionPane.WARNING_MESSAGE);
-                    return false;
+    private boolean validateResults() {
+        String errorMessage = null;
+        for (FieldInt field : fields) {
+            if (field.validator != null) {
+                errorMessage = field.validator.validate(field.result);
+                if (errorMessage != null) {
+                    break;
                 }
             }
         }
-
-        String errorMessage = input.length > 1 ? (fieldValidator == null ? null : fieldValidator.validate(input)) : (singleFieldValidator == null ? null : singleFieldValidator.validate(input));
+        if (errorMessage == null && validator != null) {
+            errorMessage = validator.validate(fields.stream().map(f -> f.result).toArray());
+        }
         if (errorMessage != null) {
-            JOptionPane.showMessageDialog(null, errorMessage, "Warning: Input error", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(null, errorMessage, "Input error", JOptionPane.WARNING_MESSAGE);
             return false;
         }
-
         return true;
     }
 
     private JButton okButton;
-    private JButton generatePasswordButton;
     private JButton cancelButton;
-    private JLabel[] labels;
-    private JTextField[] textFields;
-    private Object[] result;
-    private final int[] fieldModes;
-    private final FieldValidator fieldValidator;
-    private final SingleFieldValidator singleFieldValidator;
 }

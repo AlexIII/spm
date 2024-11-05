@@ -1,6 +1,8 @@
 package spm;
 
 import java.util.Arrays;
+import java.util.List;
+
 import javax.swing.JOptionPane;
 
 /**
@@ -14,8 +16,11 @@ public class AppDialogs {
      * @return the MD5 hash of the entered password, or null if cancelled
      */
     public static byte[] promptForMasterPassword(String windowTitle) {
-        Object input = InputDialog.show(new java.awt.Frame(), windowTitle,
-            "Enter master password", null, InputDialog.FIELD_PASSWORD);
+        Object input = InputDialog.show(
+            new java.awt.Frame(),
+            windowTitle,
+            new InputDialog.Field("Enter master password", InputDialog.FIELD_PASSWORD)
+        );
         if (input == null) return null;
         byte[] hashedPassword = Crypto.generateMd5Hash((char[]) input);
         clearPassword((char[]) input);
@@ -27,10 +32,14 @@ public class AppDialogs {
      * @return the MD5 hash of the new password, or null if cancelled
      */
     public static byte[] promptForNewMasterPassword() {
-        Object[] inputs = InputDialog.show(new java.awt.Frame(), "Create master password",
-            new String[] {"New password", "Confirm new password"}, null,
-            new int[] {InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY},
-            (fields) -> Arrays.equals((char[]) fields[0], (char[]) fields[1]) ? null : "Entered passwords do not match"
+        Object[] inputs = InputDialog.show(
+            new java.awt.Frame(),
+            "Create master password",
+            List.of(
+                new InputDialog.Field("New password", InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY),
+                new InputDialog.Field("Confirm new password", InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY)
+            ),
+            fields -> Arrays.equals((char[]) fields[0], (char[]) fields[1]) ? null : "Entered passwords do not match"
         );
         if (inputs == null) return null;
         byte[] hashedPassword = Crypto.generateMd5Hash((char[]) inputs[0]);
@@ -57,10 +66,15 @@ public class AppDialogs {
      * @param validateOldPassword a callback to validate the old password
      * @return a KeyPair containing the old and new keys, or null if cancelled
      */
-    public static KeyPair promptForPasswordChange(InputDialog.SingleFieldValidator validateOldPassword) {
-        Object[] inputs = InputDialog.show(new java.awt.Frame(), "Change master password",
-            new String[] {"Old password", "New password", "Confirm new password"}, null,
-            new int[] {InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY},
+    public static KeyPair promptForPasswordChange(InputDialog.FieldValidator validateOldPassword) {
+        Object[] inputs = InputDialog.show(
+            new java.awt.Frame(),
+            "Change master password",
+            List.of(
+                new InputDialog.Field("Old password", InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY),
+                new InputDialog.Field("New password", InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY),
+                new InputDialog.Field("Confirm new password", InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY)
+            ),
             (fields) -> {
                 if (!Arrays.equals((char[]) fields[1], (char[]) fields[2])) {
                     clearPassword((char[]) fields[0]);
@@ -125,10 +139,15 @@ public class AppDialogs {
      * @return the new or edited entry, or null if cancelled
      */
     private static Entry manageEntry(Entry entry, String dialogTitle) {
-        Object[] inputs = InputDialog.show(new java.awt.Frame(), dialogTitle,
-            new String[] {"Site", "Login", "Password", "Comment"},
-            entry == null ? null : new String[] {entry.getWebsite(), entry.getUsername(), entry.getPassword(), entry.getNotes()},
-            new int[] {InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_PASSWORD | InputDialog.FIELD_GEN_PASSWORD | InputDialog.FIELD_NOTEMPTY, InputDialog.FIELD_NORMAL}
+        Object[] inputs = InputDialog.show(
+            new java.awt.Frame(),
+            dialogTitle,
+            List.of(
+                new InputDialog.Field("Site", entry == null ? "" : entry.getWebsite(), InputDialog.FIELD_NOTEMPTY),
+                new InputDialog.Field("Login", entry == null ? "" : entry.getUsername(), InputDialog.FIELD_NOTEMPTY),
+                new InputDialog.Field("Password", entry == null ? "" : entry.getPassword(), InputDialog.FIELD_PASSWORD | InputDialog.FIELD_GEN_PASSWORD | InputDialog.FIELD_NOTEMPTY),
+                new InputDialog.Field("Comment", entry == null ? "" : entry.getNotes(), InputDialog.FIELD_NORMAL)
+            )
         );
         if (inputs == null) return null;
         entry = new Entry((String) inputs[0], (String) inputs[1], new String(((char[]) inputs[2])), (String) inputs[3]);

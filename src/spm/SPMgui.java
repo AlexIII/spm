@@ -471,9 +471,9 @@ public class SPMgui extends javax.swing.JFrame {
         AppDialogs.KeyPair keyPair = AppDialogs.promptForPasswordChange((key) -> dataTable.verifyMasterPassword((byte[]) key) ? "ok" : null);
         if (keyPair == null) return;
         if (dataTable.updateMasterPassword(keyPair.oldKey, keyPair.newKey))
-            JOptionPane.showMessageDialog(null, "Password change ok", "Info", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Master password changed successfully", "Info", JOptionPane.INFORMATION_MESSAGE);
         else
-            JOptionPane.showMessageDialog(null, "Password change error", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Master password change error", "Error", JOptionPane.ERROR_MESSAGE);
         refreshTable();
     }//GEN-LAST:event_cmpButtonActionPerformed
 
