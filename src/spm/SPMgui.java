@@ -4,6 +4,10 @@ import java.awt.Point;
 import javax.swing.ImageIcon;
 import java.awt.event.MouseEvent;
 import java.security.InvalidKeyException;
+import java.util.List;
+import java.util.prefs.Preferences;
+import java.net.URL;
+
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
@@ -11,15 +15,12 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import java.io.File;
-import java.net.URL;
 
 public class SPMgui extends javax.swing.JFrame {
     private final String ICON_PATH = "/ico.png";
-    private final String DATABASE_PATH = "spmdb.xml";
     private final int PASSWORD_COPY_TIMEOUT_SECONDS = 30;
     private final String PROGRAM_TITLE = "Simple Password Manager";
-    private final String VERSION = "v1.4";
+    private final String VERSION = "v1.5";
     private DataTable dataTable = null;
     private final String[] TABLE_HEADERS = {"Site", "Login", "Comment", "Creation date"};
     private ImageIcon windowIcon;
@@ -34,6 +35,16 @@ public class SPMgui extends javax.swing.JFrame {
         refreshTable();
     }
 
+    private String preferencesGet(String key, String defaultValue) {
+        Preferences prefs = Preferences.userNodeForPackage(SPMgui.class);
+        return prefs.get(key, defaultValue);
+    }
+    
+    private void preferencesPut(String key, String value) {
+        Preferences prefs = Preferences.userNodeForPackage(SPMgui.class);
+        prefs.put(key, value);
+    }
+
     /**
      * Sets the window icon.
      */
@@ -42,6 +53,7 @@ public class SPMgui extends javax.swing.JFrame {
             URL url = SPMgui.class.getResource(ICON_PATH);
             windowIcon = new ImageIcon(url);
             setIconImage(windowIcon.getImage());
+            AppDialogs.setWindowIcon(windowIcon.getImage());
         } catch (Exception ex) {
             // Handle exception
         }
@@ -79,39 +91,63 @@ public class SPMgui extends javax.swing.JFrame {
      * Initializes the database.
      */
     private void initializeDatabase() {
-        if (!isFileExists(DATABASE_PATH)) {
-            JOptionPane.showMessageDialog(null, "Database file \"" + DATABASE_PATH + "\" not found.", "Warning", JOptionPane.WARNING_MESSAGE);
-            byte[] key = AppDialogs.promptForNewMasterPassword();
-            if (key == null) System.exit(0);
-            DataTable.createDatabase(DATABASE_PATH, key);
+        List<ProfileManager.Profile> profiles = ProfileManager.find(".");
+
+        if (profiles.size() == 0) {
+            JOptionPane.showMessageDialog(null, "No database files found.", "Warning", JOptionPane.WARNING_MESSAGE);
+            AppDialogs.CreateProfileResult newProfile = AppDialogs.promptForCreateProfile();
+            if (newProfile == null) System.exit(0);
+            String newFile = DataTable.createProfile(ProfileManager.FILE_NAME_PREFIX, newProfile.name, newProfile.hashedPassword);
+            profiles = ProfileManager.addAndSort(profiles, newProfile.name, newFile);
         }
 
         try {
-            InvalidKeyException invalidKeyException;
-            do {
-                invalidKeyException = null;
+            String lastSelectedProfileFilePath = preferencesGet("lastSelectedProfileFilePath", profiles.get(0).path);
+            int selectedProfileIdx = profiles.stream().map(profile -> profile.path).toList().indexOf(lastSelectedProfileFilePath);
+            while (true) {
                 try {
-                    Entry.encryptionKey = AppDialogs.promptForMasterPassword(PROGRAM_TITLE);
-                    if (Entry.encryptionKey == null) System.exit(0);
-                    dataTable = new DataTable(DATABASE_PATH);
+                    AppDialogs.LoginResult result = AppDialogs.promptForMasterPassword(
+                        PROGRAM_TITLE,
+                        profiles.stream().map(profile -> profile.name).toList(),
+                        selectedProfileIdx
+                    );
+
+                    // result == null means the user cancelled the dialog
+                    if (result == null) System.exit(0);
+                    selectedProfileIdx = result.profileIndex;
+
+                    // result.addProfile != null means the user wants to create a new profile, result.hashedPassword holds the key for the new profile
+                    if (result.addProfile != null) {
+                        final String newFile = DataTable.createProfile(ProfileManager.FILE_NAME_PREFIX, result.addProfile.name, result.hashedPassword);
+                        profiles = ProfileManager.addAndSort(profiles, result.addProfile.name, newFile);
+                        final int newProfileIdx = profiles.stream().map(profile -> profile.path).toList().indexOf(newFile);
+                        if (newProfileIdx >= 0) selectedProfileIdx = newProfileIdx;
+                        continue;
+                    }
+
+                    final String selectedDbFile = profiles.get(result.profileIndex).path;
+                    // result.renameProfile != null means the user wants to rename the profile
+                    if (result.renameProfile != null) {
+                        DataTable.renameProfile(selectedDbFile, result.renameProfile);
+                        profiles.get(result.profileIndex).name = result.renameProfile;
+                        continue;
+                    }
+
+                    Entry.encryptionKey = result.hashedPassword;
+                    dataTable = new DataTable(selectedDbFile);
                 } catch (InvalidKeyException ex) {
-                    invalidKeyException = ex;
+                    continue;
                 }
-            } while (invalidKeyException != null);
+                break;
+            }
+            setTitle(profiles.get(selectedProfileIdx).name + " - " + PROGRAM_TITLE);
+            preferencesPut("lastSelectedProfileFilePath", profiles.get(selectedProfileIdx).path);
         } catch (Exception ex) {
+            // Print stacktrace to console
+            ex.printStackTrace();
             showError(ex.toString());
         }
         showInfo("");
-    }
-
-    /**
-     * Checks if a file exists.
-     * @param fileName the name of the file
-     * @return true if the file exists, false otherwise
-     */
-    private boolean isFileExists(String fileName) {
-        File file = new File(fileName);
-        return file.exists() && file.isFile();
     }
 
     /**

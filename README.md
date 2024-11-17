@@ -50,6 +50,8 @@ Executable for Windows was created with [Launch4j](http://launch4j.sourceforge.n
 
 ## Changelog
 
+- v1.5
+  - Add profiles support
 - v1.4
   - Add password generator
   - Fix xml extra new-lines problem

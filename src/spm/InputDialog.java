@@ -11,6 +11,9 @@ public class InputDialog extends Dialog {
     public static final int FIELD_NOTEMPTY = 1 << 1;
     public static final int FIELD_GEN_PASSWORD = 1 << 2;
 
+    private JButton okButton;
+    private JButton cancelButton;
+
     /**
      * Interface for validating a single field.
      */
@@ -203,22 +206,16 @@ public class InputDialog extends Dialog {
         GroupLayout layout = new GroupLayout(this);
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
-
-        if (fields.size() > 1) {
-            createMultiFieldLayout(layout);
-        } else {
-            createSingleFieldLayout(layout);
-        }
-
+        createFieldLayout(layout);
         return layout;
     }
 
     /**
-     * Creates the layout for multiple fields.
+     * Creates the layout for the fields.
      *
      * @param layout the layout to be configured
      */
-    private void createMultiFieldLayout(GroupLayout layout) {
+    private void createFieldLayout(GroupLayout layout) {
         GroupLayout.ParallelGroup horizontalLabels = layout.createParallelGroup(GroupLayout.Alignment.TRAILING);
         GroupLayout.ParallelGroup horizontalFields = layout.createParallelGroup();
         GroupLayout.ParallelGroup horizontalButtons = layout.createParallelGroup();
@@ -258,31 +255,6 @@ public class InputDialog extends Dialog {
         layout.setVerticalGroup(
             layout.createSequentialGroup()
                 .addGroup(verticalGroup)
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                    .addComponent(okButton)
-                    .addComponent(cancelButton))
-        );
-    }
-
-    /**
-     * Creates the layout for a single field.
-     *
-     * @param layout the layout to be configured
-     */
-    private void createSingleFieldLayout(GroupLayout layout) {
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.CENTER)
-                .addComponent(fields.get(0).uiLabel)
-                .addComponent(fields.get(0).uiTextField)
-                .addGroup(layout.createSequentialGroup()
-                    .addComponent(okButton)
-                    .addComponent(cancelButton))
-        );
-
-        layout.setVerticalGroup(
-            layout.createSequentialGroup()
-                .addComponent(fields.get(0).uiLabel)
-                .addComponent(fields.get(0).uiTextField)
                 .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                     .addComponent(okButton)
                     .addComponent(cancelButton))
@@ -334,7 +306,4 @@ public class InputDialog extends Dialog {
         }
         return true;
     }
-
-    private JButton okButton;
-    private JButton cancelButton;
 }

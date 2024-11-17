@@ -27,16 +27,16 @@ public class DataTable extends ArrayList<Entry> {
     private static final String ROOT_TAG = "smpdb";
     private static final String ENTRY_TAG = "entry";
     private static final String PASS_TEST_TAG = "passtest";
+    private static final String PROFILE_TAG = "profile";
     
     private Element rootElement;
     private String filterString = "";
     private List<Entry> filteredEntries = null;
     private Document document = null;
-    private String fileName = null;
+    private final String fileName;
     private String encryptedPassTest = null;
-    private NodeList entryNodes;
 
-    public DataTable(final String fileName) throws ParserConfigurationException, SAXException, IOException, InvalidKeyException {
+    public DataTable(String fileName) throws ParserConfigurationException, SAXException, IOException, InvalidKeyException {
         this.fileName = fileName;
         loadDocument();
     }
@@ -45,24 +45,62 @@ public class DataTable extends ArrayList<Entry> {
      * Creates a new database file with the given name and encryption key.
      * @param fileName The name of the file to create.
      * @param key The encryption key.
-     * @return True if the database was created successfully, false otherwise.
+     * @return The name of the created file or null if an error occurred.
      */
-    public static boolean createDatabase(final String fileName, byte[] key) {
+    public static String createProfile(String fileNamePrefix, String profileName, byte[] key) {
         try {
-            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
-            Element root = doc.createElement(ROOT_TAG);
+            final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+            final Element root = doc.createElement(ROOT_TAG);
             doc.appendChild(root);
 
-            Element passTest = doc.createElement(PASS_TEST_TAG);
+            final Element passTest = doc.createElement(PASS_TEST_TAG);
             passTest.setTextContent(Crypto.encryptPassword(key));
             root.appendChild(passTest);
 
+            final Element profile = doc.createElement(PROFILE_TAG);
+            profile.setTextContent(profileName);
+            root.appendChild(profile);
+
+            // Convert profileName to a valid file name
+            String profileFileName = profileName.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+            String fileName = fileNamePrefix + profileFileName + ".xml";
+            if(profileFileName.isBlank() || new File(fileName).exists()) {
+                for (int i = 1;; ++i) {
+                    fileName = fileNamePrefix + String.format("%02d", i) + ".xml";
+                    if (!new File(fileName).exists()) break;
+                    if (i == 99) throw new RuntimeException("Cannot create profile");
+                }
+            }
+
             new File(fileName).createNewFile();
             saveDocument(doc, fileName);
+            return fileName;
+        } catch (Exception ex) {}
+        return null;
+    }
+
+    public static String getProfileName(String fileName) {
+        try {
+            final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(fileName);
+            final Element root = (Element) doc.getElementsByTagName(ROOT_TAG).item(0);
+            return ((Element) root.getElementsByTagName(PROFILE_TAG).item(0)).getTextContent();
         } catch (Exception ex) {
-            return false;
+            return "Default";
         }
-        return true;
+    }
+
+    public static void renameProfile(String fileName, String newProfileName) throws ParserConfigurationException, SAXException, IOException {
+        final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(fileName);
+        final Element root = (Element) doc.getElementsByTagName(ROOT_TAG).item(0);
+        NodeList p = root.getElementsByTagName(PROFILE_TAG);
+        if(p.getLength() == 0) {
+            final Element profile = root.getOwnerDocument().createElement(PROFILE_TAG);
+            profile.setTextContent(newProfileName);
+            root.insertBefore(profile, root.getFirstChild());
+        } else {
+            ((Element)p.item(0)).setTextContent(newProfileName);
+        }
+        saveDocument(root.getOwnerDocument(), fileName);
     }
 
     /**
@@ -167,7 +205,6 @@ public class DataTable extends ArrayList<Entry> {
      */
     private void saveChanges() {
         saveDocument(document, fileName);
-        entryNodes = rootElement.getElementsByTagName(ENTRY_TAG);
     }
 
     /**

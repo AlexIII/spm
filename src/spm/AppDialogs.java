@@ -1,5 +1,6 @@
 package spm;
 
+import java.awt.Image;
 import java.util.Arrays;
 import java.util.List;
 
@@ -10,42 +11,56 @@ import javax.swing.JOptionPane;
  */
 public class AppDialogs {
 
+    public static void setWindowIcon(Image icon) {
+        LoginDialog.setWindowIcon(icon);
+    }
+
+    public static class LoginResult extends LoginDialog.Result {
+        public final byte[] hashedPassword;
+        public LoginResult(LoginDialog.Result result) {
+            super(result.profileIndex, result.password, result.renameProfile, result.addProfile);
+            this.hashedPassword = Crypto.generateMd5Hash(this.addProfile != null ? this.addProfile.password : result.password);
+            if(this.addProfile != null) {
+                clearPassword(this.addProfile.password);
+            }
+            clearPassword(result.password);
+        }
+    }
+
+    public static class CreateProfileResult extends LoginDialog.AddProfileResult {
+        public final byte[] hashedPassword;
+        public CreateProfileResult(String name, char[] password) {
+            super(name, password);
+            this.hashedPassword = Crypto.generateMd5Hash(password);
+            clearPassword(password);
+        }
+    }
+
     /**
      * Prompts the user to enter the master password.
      * @param windowTitle the title of the window
+     * @param profiles the list of profile names to choose from
      * @return the MD5 hash of the entered password, or null if cancelled
      */
-    public static byte[] promptForMasterPassword(String windowTitle) {
-        Object input = InputDialog.show(
+    public static LoginResult promptForMasterPassword(String windowTitle, List<String> profiles, int selectedIndex) {
+        LoginDialog.Result result = LoginDialog.show(
             new java.awt.Frame(),
             windowTitle,
-            new InputDialog.Field("Enter master password", InputDialog.FIELD_PASSWORD)
+            profiles,
+            selectedIndex
         );
-        if (input == null) return null;
-        byte[] hashedPassword = Crypto.generateMd5Hash((char[]) input);
-        clearPassword((char[]) input);
-        return hashedPassword;
+        if (result == null) return null;
+        return new LoginResult(result);
     }
 
     /**
      * Prompts the user to create a new master password.
      * @return the MD5 hash of the new password, or null if cancelled
      */
-    public static byte[] promptForNewMasterPassword() {
-        Object[] inputs = InputDialog.show(
-            new java.awt.Frame(),
-            "Create master password",
-            List.of(
-                new InputDialog.Field("New password", InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY),
-                new InputDialog.Field("Confirm new password", InputDialog.FIELD_PASSWORD | InputDialog.FIELD_NOTEMPTY)
-            ),
-            fields -> Arrays.equals((char[]) fields[0], (char[]) fields[1]) ? null : "Entered passwords do not match"
-        );
-        if (inputs == null) return null;
-        byte[] hashedPassword = Crypto.generateMd5Hash((char[]) inputs[0]);
-        clearPassword((char[]) inputs[0]);
-        clearPassword((char[]) inputs[1]);
-        return hashedPassword;
+    public static CreateProfileResult promptForCreateProfile() {
+        LoginDialog.AddProfileResult result = LoginDialog.promptNewProfile();
+        if (result == null) return null;
+        return new CreateProfileResult(result.name, result.password);
     }
 
     /**

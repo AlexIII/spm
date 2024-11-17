@@ -1,0 +1,1 @@
+javac -g:source,lines,vars -source 1.8 -target 1.8 -d out src/spm/*.java && java -cp out spm.SPMgui
